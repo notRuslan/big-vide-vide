@@ -1,11 +1,216 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>Todo List</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes bgShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .todo-item { transition: all 0.3s ease; }
+        .todo-item:hover { transform: translateY(-2px); }
+    </style>
 </head>
-<body>
-    <h1>Hello World!</h1>
+<body class="min-h-screen bg-gradient-to-br from-indigo-300 via-purple-300 to-pink-200 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900 flex items-center justify-center p-4 transition-colors duration-500" style="background-size: 200% 200%; animation: bgShift 8s ease infinite;">
+    <div class="w-full max-w-lg">
+        <!-- Header -->
+        <div class="text-center mb-8 flex items-center justify-between">
+            <div>
+                <h1 class="text-5xl font-bold text-white mb-2 drop-shadow-lg">📝 Todo List</h1>
+                <p class="text-white/80 text-lg">Организуй свой день</p>
+            </div>
+            <button 
+                onclick="toggleTheme()" 
+                class="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-all transform hover:scale-110 backdrop-blur-sm"
+                title="Переключить тему"
+            >
+                <span id="themeIcon">🌙</span>
+            </button>
+        </div>
+
+        <!-- Card -->
+        <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 transition-colors duration-500">
+            <!-- Input -->
+            <div class="flex gap-3 mb-6">
+                <input 
+                    type="text" 
+                    id="todoInput" 
+                    placeholder="Добавить задачу..." 
+                    class="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-600 focus:border-purple-500 focus:outline-none transition-colors text-gray-700 dark:text-gray-200 dark:bg-gray-700 placeholder-gray-400"
+                    onkeypress="if(event.key==='Enter') addTodo()"
+                >
+                <button 
+                    onclick="addTodo()"
+                    class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-semibold hover:from-purple-700 hover:to-pink-600 transition-all transform hover:scale-105 shadow-lg"
+                >
+                    Добавить
+                </button>
+            </div>
+
+            <!-- Stats -->
+            <div id="stats" class="flex gap-4 mb-4 text-sm text-gray-600 dark:text-gray-300 hidden">
+                <span class="bg-blue-100 dark:bg-blue-900/50 px-3 py-1 rounded-full">📋 Всего: <strong id="totalCount">0</strong></span>
+                <span class="bg-green-100 dark:bg-green-900/50 px-3 py-1 rounded-full">✅ Готово: <strong id="doneCount">0</strong></span>
+                <span class="bg-yellow-100 dark:bg-yellow-900/50 px-3 py-1 rounded-full">⏳ Осталось: <strong id="pendingCount">0</strong></span>
+            </div>
+
+            <!-- Todo List -->
+            <ul id="todoList" class="space-y-2 max-h-96 overflow-y-auto"></ul>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="text-center py-8 text-gray-400 dark:text-gray-500">
+                <p class="text-4xl mb-2">🎯</p>
+                <p class="text-lg">Нет задач</p>
+                <p class="text-sm mt-1">Добавьте свою первую задачу!</p>
+            </div>
+
+            <!-- Footer Actions -->
+            <div id="footerActions" class="hidden mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                <button 
+                    onclick="clearCompleted()"
+                    class="text-sm text-red-500 hover:text-red-700 transition-colors font-medium"
+                >
+                    🗑️ Удалить выполненные
+                </button>
+                <button 
+                    onclick="clearAll()"
+                    class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 transition-colors"
+                >
+                    Очистить всё
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <p class="text-center text-white/60 dark:text-gray-400 mt-6 text-sm transition-colors">
+            ✨ Данные сохраняются в localStorage
+        </p>
+    </div>
+
+    <script>
+        let todos = JSON.parse(localStorage.getItem('todos')) || [];
+
+        function save() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            todos.push({
+                id: Date.now(),
+                text,
+                done: false,
+                createdAt: new Date().toISOString()
+            });
+
+            input.value = '';
+            save();
+            render();
+        }
+
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) todo.done = !todo.done;
+            save();
+            render();
+        }
+
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            save();
+            render();
+        }
+
+        function clearCompleted() {
+            todos = todos.filter(t => !t.done);
+            save();
+            render();
+        }
+
+        function clearAll() {
+            if (confirm('Удалить все задачи?')) {
+                todos = [];
+                save();
+                render();
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('themeIcon');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.textContent = '🌙';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.textContent = '☀️';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+            document.getElementById('themeIcon').textContent = '☀️';
+        }
+
+        function render() {
+            const list = document.getElementById('todoList');
+            const empty = document.getElementById('emptyState');
+            const stats = document.getElementById('stats');
+            const footer = document.getElementById('footerActions');
+
+            if (todos.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                stats.classList.add('hidden');
+                footer.classList.add('hidden');
+                return;
+            }
+
+            empty.classList.add('hidden');
+            stats.classList.remove('hidden');
+            footer.classList.remove('hidden');
+
+            list.innerHTML = todos.map(todo => `
+                <li class="todo-item flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 group transition-colors">
+                    <input 
+                        type="checkbox" 
+                        ${todo.done ? 'checked' : ''} 
+                        onchange="toggleTodo(${todo.id})"
+                        class="w-5 h-5 rounded border-2 border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    >
+                    <span class="flex-1 ${todo.done ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'} transition-all">
+                        ${todo.text}
+                    </span>
+                    <button 
+                        onclick="deleteTodo(${todo.id})"
+                        class="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-600 px-2"
+                        title="Удалить"
+                    >✕</button>
+                </li>
+            `).join('');
+
+            const done = todos.filter(t => t.done).length;
+            document.getElementById('totalCount').textContent = todos.length;
+            document.getElementById('doneCount').textContent = done;
+            document.getElementById('pendingCount').textContent = todos.length - done;
+        }
+
+        render();
+    </script>
 </body>
 </html>
