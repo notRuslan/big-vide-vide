@@ -1,0 +1,138 @@
+import SQL from 'sql.js';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const DB_PATH = process.env.DB_PATH || join(__dirname, '..', '..', 'data', 'todos.db');
+
+let db;
+
+async function initDb() {
+  const SQLModule = await SQL();
+
+  // Ensure data directory exists
+  mkdirSync(dirname(DB_PATH), { recursive: true });
+
+  if (existsSync(DB_PATH)) {
+    const buffer = readFileSync(DB_PATH);
+    db = new SQLModule.Database(buffer);
+  } else {
+    db = new SQLModule.Database();
+  }
+
+  // Create table if not exists
+  db.run(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      text TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL
+    )
+  `);
+
+  return db;
+}
+
+function saveDb() {
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  writeFileSync(DB_PATH, buffer);
+}
+
+function escapeStr(s) {
+  return String(s).replace(/'/g, "''");
+}
+
+function rowToTodo(row) {
+  return {
+    id: row[0],
+    text: row[1],
+    completed: !!row[2],
+    createdAt: row[3],
+  };
+}
+
+function getOne(id) {
+  const result = db.exec(`SELECT * FROM todos WHERE id = ${id}`);
+  if (!result || !result[0] || !result[0].values) return null;
+  const rows = result[0].values;
+  return rows.length > 0 ? rowToTodo(rows[0]) : null;
+}
+
+function getLastId() {
+  const result = db.exec('SELECT MAX(id) as max_id FROM todos');
+  const rows = result[0]?.values ?? [];
+  return rows.length > 0 ? rows[0][0] : null;
+}
+
+export default {
+  init: initDb,
+  save: saveDb,
+
+  getAll() {
+    const result = db.exec('SELECT * FROM todos ORDER BY created_at ASC');
+    if (!result || !result[0] || !result[0].values) {
+      saveDb();
+      return [];
+    }
+    const rows = result[0].values;
+    saveDb();
+    return rows.map(rowToTodo);
+  },
+
+  getOne,
+
+  create(text) {
+    const escaped = escapeStr(text);
+    const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    db.run(`INSERT INTO todos (text, completed, created_at) VALUES ('${escaped}', 0, '${now}')`);
+    saveDb();
+    const id = getLastId();
+    const row = getOne(id);
+    return rowToTodo(row);
+  },
+
+  toggle(id) {
+    const todo = getOne(id);
+    if (!todo) return null;
+    const newCompleted = todo.completed ? 0 : 1;
+    db.run(`UPDATE todos SET completed = ${newCompleted} WHERE id = ${id}`);
+    saveDb();
+    return getOne(id);
+  },
+
+  updateText(id, text) {
+    const escaped = escapeStr(text);
+    db.run(`UPDATE todos SET text = '${escaped}' WHERE id = ${id}`);
+    if (db.getRowsModified() === 0) return null;
+    saveDb();
+    return getOne(id);
+  },
+
+  delete(id) {
+    db.run(`DELETE FROM todos WHERE id = ${id}`);
+    const changed = db.getRowsModified() > 0;
+    if (changed) saveDb();
+    return changed;
+  },
+
+  clearCompleted() {
+    db.run('DELETE FROM todos WHERE completed = 1');
+    saveDb();
+  },
+
+  count() {
+    const result = db.exec('SELECT COUNT(*) as total FROM todos');
+    if (!result || !result[0] || !result[0].values) return 0;
+    return result[0].values[0][0] ?? 0;
+  },
+
+  countCompleted() {
+    const result = db.exec('SELECT COUNT(*) as total FROM todos WHERE completed = 1');
+    if (!result || !result[0] || !result[0].values) return 0;
+    return result[0].values[0][0] ?? 0;
+  },
+};

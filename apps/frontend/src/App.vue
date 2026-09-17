@@ -1,37 +1,100 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 
 const todos = ref([])
 const newTodo = ref('')
-const filter = ref('all') // all, active, completed
+const filter = ref('all')
 const darkMode = ref(false)
+const loading = ref(false)
 
-// Load from localStorage
+const API = '/api'
+
+// ─── API helpers ───────────────────────────────────────────────
+
+async function fetchTodos() {
+  loading.value = true
+  try {
+    const res = await fetch(`${API}/todos`)
+    todos.value = await res.json()
+  } catch (err) {
+    console.error('Failed to fetch todos:', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function addTodo() {
+  const text = newTodo.value.trim()
+  if (!text) return
+
+  try {
+    const res = await fetch(`${API}/todos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (res.ok) {
+      newTodo.value = ''
+      await fetchTodos()
+    }
+  } catch (err) {
+    console.error('Failed to add todo:', err)
+  }
+}
+
+async function toggleTodo(todo) {
+  try {
+    const res = await fetch(`${API}/todos/${todo.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ completed: !todo.completed }),
+    })
+    if (res.ok) await fetchTodos()
+  } catch (err) {
+    console.error('Failed to toggle todo:', err)
+  }
+}
+
+async function removeTodo(id) {
+  try {
+    const res = await fetch(`${API}/todos/${id}`, { method: 'DELETE' })
+    if (res.ok) await fetchTodos()
+  } catch (err) {
+    console.error('Failed to delete todo:', err)
+  }
+}
+
+async function clearCompleted() {
+  try {
+    const res = await fetch(`${API}/todos/completed`, { method: 'DELETE' })
+    if (res.ok) await fetchTodos()
+  } catch (err) {
+    console.error('Failed to clear completed:', err)
+  }
+}
+
+// ─── Theme ─────────────────────────────────────────────────────
+
 onMounted(() => {
-  const saved = localStorage.getItem('todos')
-  if (saved) todos.value = JSON.parse(saved)
-
   const savedDark = localStorage.getItem('darkMode')
   if (savedDark) darkMode.value = JSON.parse(savedDark)
-
   if (darkMode.value) {
     document.documentElement.classList.add('dark')
   }
+  fetchTodos()
 })
 
-// Save to localStorage
-watch(todos, (val) => {
-  localStorage.setItem('todos', JSON.stringify(val))
-}, { deep: true })
-
-watch(darkMode, (val) => {
-  localStorage.setItem('darkMode', JSON.stringify(val))
-  if (val) {
+function toggleDark() {
+  darkMode.value = !darkMode.value
+  localStorage.setItem('darkMode', JSON.stringify(darkMode.value))
+  if (darkMode.value) {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')
   }
-})
+}
+
+// ─── Computed ──────────────────────────────────────────────────
 
 const filteredTodos = computed(() => {
   switch (filter.value) {
@@ -44,31 +107,7 @@ const filteredTodos = computed(() => {
 const completedCount = computed(() => todos.value.filter(t => t.completed).length)
 const remainingCount = computed(() => todos.value.length - completedCount.value)
 
-function addTodo() {
-  const text = newTodo.value.trim()
-  if (!text) return
-
-  todos.value.push({
-    id: Date.now(),
-    text,
-    completed: false,
-    createdAt: new Date().toISOString()
-  })
-
-  newTodo.value = ''
-}
-
-function removeTodo(id) {
-  todos.value = todos.value.filter(t => t.id !== id)
-}
-
-function toggleTodo(todo) {
-  todo.completed = !todo.completed
-}
-
-function clearCompleted() {
-  todos.value = todos.value.filter(t => !t.completed)
-}
+// ─── Keyboard ──────────────────────────────────────────────────
 
 function handleKeydown(e) {
   if (e.key === 'Enter') addTodo()
@@ -86,7 +125,7 @@ function handleKeydown(e) {
             <p class="text-gray-500 dark:text-gray-400 mt-1">Организуй свой день</p>
           </div>
           <button
-            @click="darkMode = !darkMode"
+            @click="toggleDark"
             class="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-xl hover:scale-110 transition-transform"
             title="Тёмная тема"
           >
@@ -106,6 +145,7 @@ function handleKeydown(e) {
           <button
             @click="addTodo"
             class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors"
+            :disabled="loading"
           >
             Добавить
           </button>
@@ -131,7 +171,7 @@ function handleKeydown(e) {
         <!-- Todo List -->
         <div class="space-y-2 mb-4">
           <div
-            v-if="filteredTodos.length === 0"
+            v-if="filteredTodos.length === 0 && !loading"
             class="text-center py-8 text-gray-400 dark:text-gray-500"
           >
             <p class="text-4xl mb-2">🎯</p>
@@ -189,7 +229,7 @@ function handleKeydown(e) {
         </div>
 
         <p class="text-center text-sm text-gray-400 dark:text-gray-500 mt-4">
-          ✨ Данные сохраняются в localStorage
+          ✨ Данные сохраняются в БД
         </p>
       </div>
     </div>

@@ -6,3 +6,9 @@ services:
     restart: unless-stopped
     environment:
       - PORT=3000
+      - DB_PATH=/app/data/todos.db
+    volumes:
+      - sqlite_data:/app/data
+
+volumes:
+  sqlite_data:
