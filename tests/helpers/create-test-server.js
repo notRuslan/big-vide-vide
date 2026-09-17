@@ -87,6 +87,32 @@ export async function createTestApp() {
     }
   });
 
+  // PUT /api/auth/change-password
+  app.put('/api/auth/change-password', authMiddleware, async (req, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      if (!oldPassword) {
+        return res.status(400).json({ error: 'Old password is required' });
+      }
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters' });
+      }
+      const user = db.getUserById(req.userId);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const valid = db.comparePassword(oldPassword, user.password_hash);
+      if (!valid) {
+        return res.status(401).json({ error: 'Invalid old password' });
+      }
+      const passwordHash = db.hashPassword(newPassword);
+      db.updateUser(user.id, { password_hash: passwordHash });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // ─── Admin Middleware ──────────────────────────────────────────
 
   function adminMiddleware(req, res, next) {

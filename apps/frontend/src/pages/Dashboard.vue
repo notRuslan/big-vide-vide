@@ -205,6 +205,12 @@ function handleKeydown(e) {
               👑 Админ-панель
             </button>
             <button
+              @click="router.push('/profile')"
+              class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-sm font-medium transition-colors"
+            >
+              👤 Личный кабинет
+            </button>
+            <button
               @click="logout"
               class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors"
             >

@@ -6,12 +6,16 @@ import Login from './pages/Login.vue'
 import Register from './pages/Register.vue'
 import Dashboard from './pages/Dashboard.vue'
 import AdminPage from './pages/AdminPage.vue'
+import ProfilePage from './pages/ProfilePage.vue'
+import ChangePasswordPage from './pages/ChangePasswordPage.vue'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', component: Dashboard, meta: { auth: true } },
     { path: '/admin', component: AdminPage, meta: { auth: true } },
+    { path: '/profile', component: ProfilePage, meta: { auth: true } },
+    { path: '/change-password', component: ChangePasswordPage, meta: { auth: true } },
     { path: '/login', component: Login },
     { path: '/register', component: Register },
   ],
