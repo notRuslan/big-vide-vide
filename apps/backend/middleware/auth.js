@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-' + Date.now();
+function getSecret() {
+  return process.env.JWT_SECRET || 'fallback-secret';
+}
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -10,7 +12,7 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getSecret());
     req.userId = decoded.userId;
     next();
   } catch (err) {
@@ -19,7 +21,7 @@ function authMiddleware(req, res, next) {
 }
 
 function generateToken(userId) {
-  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ userId }, getSecret(), { expiresIn: '30d' });
 }
 
 export { authMiddleware, generateToken };

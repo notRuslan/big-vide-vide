@@ -118,3 +118,24 @@ docker compose down
 docker compose build
 docker compose up -d
 ```
+
+## Тестирование
+
+Смотри [docs/testing.md](docs/testing.md) для полного руководства.
+
+```bash
+# Все тесты
+npm run test
+
+# Только unit тесты
+npm run test:unit
+
+# Только e2e тесты
+npm run test:e2e
+
+# Watch mode
+npm run test:watch
+
+# С покрытием
+npm run test -- --coverage
+```

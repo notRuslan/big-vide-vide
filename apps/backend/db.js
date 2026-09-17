@@ -7,18 +7,24 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const DB_PATH = process.env.DB_PATH || join(__dirname, '..', '..', 'data', 'todos.db');
+let DB_PATH = process.env.DB_PATH || join(__dirname, '..', '..', 'data', 'todos.db');
+
+// Позволяем переопределить DB_PATH через process.env.DB_PATH (для тестов)
+function getDBPath() {
+  return process.env.DB_PATH || DB_PATH;
+}
 
 let db;
 
 async function initDb() {
   const SQLModule = await SQL();
 
+  const dbPath = getDBPath();
   // Ensure data directory exists
-  mkdirSync(dirname(DB_PATH), { recursive: true });
+  mkdirSync(dirname(dbPath), { recursive: true });
 
-  if (existsSync(DB_PATH)) {
-    const buffer = readFileSync(DB_PATH);
+  if (existsSync(dbPath)) {
+    const buffer = readFileSync(dbPath);
     db = new SQLModule.Database(buffer);
   } else {
     db = new SQLModule.Database();
@@ -56,9 +62,10 @@ async function initDb() {
 }
 
 function saveDb() {
+  const dbPath = getDBPath();
   const data = db.export();
   const buffer = Buffer.from(data);
-  writeFileSync(DB_PATH, buffer);
+  writeFileSync(dbPath, buffer);
 }
 
 function escapeStr(s) {
@@ -150,8 +157,8 @@ function createForUser(userId, text) {
   db.run(`INSERT INTO todos (text, completed, created_at, user_id) VALUES ('${escaped}', 0, '${now}', ${userId})`);
   saveDb();
   const id = getLastId();
-  const row = getOne(id);
-  return rowToTodo(row);
+  // getOne уже вызывает rowToTodo и возвращает готовый объект
+  return getOne(id);
 }
 
 function toggleForUser(userId, id) {
