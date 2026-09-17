@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "chrome-devtools": {
+      "roots": [
+        {
+          "uri": "file:///I:/projects/test/pi-dev/big-vibe-vide",
+          "name": "big-vibe-vide"
+        }
+      ]
+    }
+  }
+}
