@@ -1,0 +1,10 @@
+{
+    "name": "big-vibe-vide",
+    "version": "1.0.0",
+    "description": "Vue 3 + Tailwind Todo App",
+    "type": "module",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js"
+    }
+}
