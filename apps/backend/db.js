@@ -36,9 +36,17 @@ async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      is_admin INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL
     )
   `);
+
+  // Add is_admin column for existing databases (migration)
+  try {
+    db.run('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+  } catch (e) {
+    // Column already exists — ignore
+  }
 
   // Create todos table if not exists
   db.run(`
@@ -101,9 +109,50 @@ function createUser(username, passwordHash) {
   const escapedUsername = escapeStr(username);
   const escapedHash = escapeStr(passwordHash);
   const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  db.run(`INSERT INTO users (username, password_hash, created_at) VALUES ('${escapedUsername}', '${escapedHash}', '${now}')`);
+
+  // First user becomes admin
+  const userCount = getUserCount();
+  const isAdmin = userCount === 0 ? 1 : 0;
+
+  db.run(`INSERT INTO users (username, password_hash, is_admin, created_at) VALUES ('${escapedUsername}', '${escapedHash}', ${isAdmin}, '${now}')`);
   saveDb();
   return getUserByUsername(username);
+}
+
+function getUserCount() {
+  const result = db.exec('SELECT COUNT(*) as total FROM users');
+  if (!result || !result[0] || !result[0].values) return 0;
+  return result[0].values[0][0] ?? 0;
+}
+
+function getAllUsers() {
+  const result = db.exec('SELECT * FROM users ORDER BY created_at ASC');
+  if (!result || !result[0] || !result[0].values) {
+    saveDb();
+    return [];
+  }
+  const rows = result[0].values;
+  saveDb();
+  return rows.map(rowToUser);
+}
+
+function updateUser(id, fields) {
+  const parts = [];
+  const values = [];
+  if (fields.username !== undefined) {
+    parts.push(`username = '${escapeStr(fields.username)}'`);
+  }
+  if (fields.password_hash !== undefined) {
+    parts.push(`password_hash = '${escapeStr(fields.password_hash)}'`);
+  }
+  if (fields.is_admin !== undefined) {
+    parts.push(`is_admin = ${fields.is_admin ? 1 : 0}`);
+  }
+  if (parts.length === 0) return null;
+
+  db.run(`UPDATE users SET ${parts.join(', ')} WHERE id = ${id}`);
+  saveDb();
+  return getUserById(id);
 }
 
 function hashPassword(password) {
@@ -134,7 +183,8 @@ function rowToUser(row) {
     id: row[0],
     username: row[1],
     password_hash: row[2],
-    createdAt: row[3],
+    isAdmin: !!row[3],
+    createdAt: row[4],
   };
 }
 
@@ -271,6 +321,9 @@ export default {
   createUser,
   getUserByUsername,
   getUserById,
+  getUserCount,
+  getAllUsers,
+  updateUser,
 
   // User-scoped todos
   getAllByUserId,

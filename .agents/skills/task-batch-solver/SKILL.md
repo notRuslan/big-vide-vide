@@ -82,7 +82,7 @@ The sub-agent will use the same model as the current session (pi inherits provid
 **Important:** Use the helper script to manage RPC communication:
 
 ```bash
-node .agents/skills/task-batch-solver/rpc-client.js <prompt>
+node .agents/skills/task-batch-solver/rpc-client.cjs <prompt>
 ```
 
 The helper script:
@@ -345,9 +345,9 @@ Response:
 | `message_update` | Streaming text (assemble for display) |
 | `tool_execution_start/end` | Tool call lifecycle |
 
-## Appendix B: rpc-client.js Helper Script
+## Appendix B: rpc-client.cjs Helper Script
 
-The skill expects a helper script at `.agents/skills/task-batch-solver/rpc-client.js`. If it doesn't exist, the agent should create it. See the example implementation below:
+The skill expects a helper script at `.agents/skills/task-batch-solver/rpc-client.cjs`. If it doesn't exist, the agent should create it. See the example implementation below:
 
 ```javascript
 // .agents/skills/task-batch-solver/rpc-client.js

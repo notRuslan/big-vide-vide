@@ -82,7 +82,110 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ username: user.username });
+    res.json({ username: user.username, isAdmin: !!user.isAdmin });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Admin Middleware ──────────────────────────────────────────
+
+function adminMiddleware(req, res, next) {
+  try {
+    const user = db.getUserById(req.userId);
+    if (!user || !user.isAdmin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// ─── Admin Routes ──────────────────────────────────────────────
+
+// GET /api/admin/users — list all users (admin only)
+app.get('/api/admin/users', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const users = db.getAllUsers();
+    // Don't expose password hashes
+    const safeUsers = users.map(u => ({
+      id: u.id,
+      username: u.username,
+      isAdmin: !!u.isAdmin,
+      createdAt: u.createdAt,
+    }));
+    res.json(safeUsers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin/users/:id — get single user details (admin only)
+app.get('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const user = db.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      id: user.id,
+      username: user.username,
+      isAdmin: !!user.isAdmin,
+      createdAt: user.createdAt,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/admin/users/:id — update user (admin only)
+app.put('/api/admin/users/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const user = db.getUserById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const { username, password, is_admin } = req.body;
+    const fields = {};
+
+    if (username !== undefined) {
+      if (typeof username !== 'string' || !/^[a-zA-Z0-9_]{2,30}$/.test(username)) {
+        return res.status(400).json({ error: 'Username must be 2-30 chars, alphanumeric or underscore' });
+      }
+      // Check uniqueness (excluding current user)
+      const existing = db.getUserByUsername(username);
+      if (existing && existing.id !== id) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+      fields.username = username;
+    }
+
+    if (password !== undefined) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+      fields.password_hash = db.hashPassword(password);
+    }
+
+    if (is_admin !== undefined) {
+      fields.is_admin = !!is_admin;
+    }
+
+    const updated = db.updateUser(id, fields);
+    if (!updated) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    res.json({
+      id: updated.id,
+      username: updated.username,
+      isAdmin: !!updated.isAdmin,
+      createdAt: updated.createdAt,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

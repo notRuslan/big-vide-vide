@@ -23,7 +23,8 @@ if (!PROMPT) {
 
 const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
-const agent = spawn('pi', ['--mode', 'rpc', '--no-session']);
+const isWin = process.platform === 'win32';
+const agent = spawn(isWin ? 'cmd' : 'pi', isWin ? ['/c', 'pi', '--mode', 'rpc', '--no-session'] : ['--mode', 'rpc', '--no-session'], { shell: isWin });
 
 let buffer = '';
 let settled = false;

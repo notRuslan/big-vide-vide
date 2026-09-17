@@ -10,6 +10,7 @@ const filter = ref('all')
 const darkMode = ref(false)
 const loading = ref(false)
 const username = ref('')
+const isAdmin = ref(false)
 const meLoading = ref(false)
 
 const API = '/api'
@@ -32,6 +33,7 @@ async function fetchCurrentUser() {
     if (res.ok) {
       const data = await res.json()
       username.value = data.username
+      isAdmin.value = !!data.isAdmin
     } else {
       // Token invalid — logout
       localStorage.removeItem(TOKEN_KEY)
@@ -194,6 +196,13 @@ function handleKeydown(e) {
               title="Тёмная тема"
             >
               🌙
+            </button>
+            <button
+              v-if="isAdmin"
+              @click="router.push('/admin')"
+              class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-xl text-sm font-medium transition-colors"
+            >
+              👑 Админ-панель
             </button>
             <button
               @click="logout"
