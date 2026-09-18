@@ -119,6 +119,10 @@ docker compose build
 docker compose up -d
 ```
 
+## Субагент image-viewer (Pi)
+
+Визуальную аналитику (скриншоты, изображения, сверка UI с дизайном) выполняет проектный субагент `image-viewer` на модели `llama.cpp/gemma4`; после его завершения расширение `.pi/extensions/llama-model-restore.ts` возвращает основную модель. Установка и использование: [docs/pi-image-viewer.md](docs/pi-image-viewer.md).
+
 ## Тестирование
 
 Смотри [docs/testing.md](docs/testing.md) для полного руководства.
